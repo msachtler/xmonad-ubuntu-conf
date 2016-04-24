@@ -15,7 +15,9 @@
 -}
 
 import XMonad
+import XMonad.Actions.CycleWS
 import XMonad.Hooks.SetWMName
+import XMonad.Hooks.WorkspaceByPos
 import XMonad.Layout.Grid
 import XMonad.Layout.ResizableTile
 import XMonad.Layout.IM
@@ -24,6 +26,8 @@ import XMonad.Layout.NoBorders
 import XMonad.Layout.Circle
 import XMonad.Layout.PerWorkspace (onWorkspace)
 import XMonad.Layout.Fullscreen
+import XMonad.Layout.IndependentScreens
+import XMonad.Layout.NoBorders
 import XMonad.Util.EZConfig
 import XMonad.Util.Run
 import XMonad.Hooks.DynamicLog
@@ -40,7 +44,8 @@ import Data.Ratio ((%))
   simpler parts of xmonad's behavior and are straightforward to tweak.
 -}
 
-myModMask            = mod4Mask       -- changes the mod key to "super"
+myModMask            = mod1Mask       -- changes the mod key to "super"
+modm                 = mod1Mask
 myFocusedBorderColor = "#ff0000"      -- color of focused border
 myNormalBorderColor  = "#cccccc"      -- color of inactive border
 myBorderWidth        = 1              -- width of border around windows
@@ -89,13 +94,12 @@ myUrgentWSRight = "}"
 
 myWorkspaces =
   [
-    "7:Chat",  "8:Dbg", "9:Pix",
-    "4:Docs",  "5:Dev", "6:Web",
-    "1:Term",  "2:Hub", "3:Mail",
-    "0:VM",    "Extr1", "Extr2"
+    "7",  "8", "9",
+    "4",  "5", "6",
+    "1",  "2", "3"
   ]
 
-startupWorkspace = "5:Dev"  -- which workspace do you want to be on after launch?
+startupWorkspace = "9"  -- which workspace do you want to be on after launch?
 
 {-
   Layout configuration. In this section we identify which xmonad
@@ -149,31 +153,13 @@ defaultLayouts = smartBorders(avoidStruts(
   ||| Grid))
 
 
--- Here we define some layouts which will be assigned to specific
--- workspaces based on the functionality of that workspace.
-
--- The chat layout uses the "IM" layout. We have a roster which takes
--- up 1/8 of the screen vertically, and the remaining space contains
--- chat windows which are tiled using the grid layout. The roster is
--- identified using the myIMRosterTitle variable, and by default is
--- configured for Pidgin, so if you're using something else you
--- will want to modify that variable.
-chatLayout = avoidStruts(withIM (1%7) (Title myIMRosterTitle) Grid)
-
--- The GIMP layout uses the ThreeColMid layout. The traditional GIMP
--- floating panels approach is a bit of a challenge to handle with xmonad;
--- I find the best solution is to make the image you are working on the
--- master area, and then use this ThreeColMid layout to make the panels
--- tile to the left and right of the image. If you use GIMP 2.8, you
--- can use single-window mode and avoid this issue.
-gimpLayout = smartBorders(avoidStruts(ThreeColMid 1 (3/100) (3/4)))
-
 -- Here we combine our default layouts with our specific, workspace-locked
 -- layouts.
-myLayouts =
-  onWorkspace "7:Chat" chatLayout
-  $ onWorkspace "9:Pix" gimpLayout
-  $ defaultLayouts
+myLayouts = defaultLayouts
+-- myLayouts =
+--   onWorkspace "7" chatLayout
+--   $ onWorkspace "9" gimpLayout
+--   $ defaultLayouts
 
 
 {-
@@ -203,15 +189,21 @@ myLayouts =
 myKeyBindings =
   [
     ((myModMask, xK_b), sendMessage ToggleStruts)
-    , ((myModMask, xK_a), sendMessage MirrorShrink)
-    , ((myModMask, xK_z), sendMessage MirrorExpand)
-    , ((myModMask, xK_p), spawn "synapse")
-    , ((myModMask .|. mod1Mask, xK_space), spawn "synapse")
-    , ((myModMask, xK_u), focusUrgent)
-    , ((0, 0x1008FF12), spawn "amixer -q set Master toggle")
-    , ((0, 0x1008FF11), spawn "amixer -q set Master 10%-")
-    , ((0, 0x1008FF13), spawn "amixer -q set Master 10%+")
-  ]
+--    , ((myModMask, xK_a), sendMessage MirrorShrink)
+--    , ((myModMask, xK_z), sendMessage MirrorExpand)
+    , ((modm .|. controlMask    , xK_Escape ), spawn "xscreensaver-command -l")
+    , ((modm                    , xK_Return ), spawn "xterm")
+    , ((modm                    , xK_c      ), spawn "google-chrome")
+    , ((modm                    , xK_o      ), shiftNextScreen >> nextScreen)
+    , ((modm .|. controlMask    , xK_j      ), nextScreen)
+    , ((modm .|. controlMask    , xK_k      ), prevScreen)
+    , ((myModMask               , xK_p), spawn "synapse")
+    , ((myModMask               , xK_u), focusUrgent)
+    ] ++ [
+    -- Independent workspace switcher
+    ((m .|. modm, k), windows $ onCurrentScreen f i)
+         | (i, k) <- zip myWorkspaces [xK_1 .. xK_9]
+              , (f, m) <- [(W.greedyView, 0), (W.shift, shiftMask)] ] 
 
 
 {-
